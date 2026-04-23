@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise AI Support</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">AI Support Assistant</div>
+    <div class="chat-box" id="chat-box">
+        <div class="message bot-msg">Hello! I am your AI assistant. How can I help you today?</div>
+    </div>
+    <div class="typing" id="typing-indicator">AI is typing...</div>
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const typingIndicator = document.getElementById("typing-indicator");
+
+    function appendMessage(text, sender, meta = "") {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${sender}-msg`;
+        msgDiv.innerHTML = `${text} <span class="meta-data">${meta}</span>`;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        appendMessage(text, "user");
+        userInput.value = "";
+        typingIndicator.style.display = "block";
+
+        try {
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+            
+            typingIndicator.style.display = "none";
+            const metaInfo = `Intent: ${data.intent} | Sentiment: ${data.sentiment} | Conf: ${(data.confidence*100).toFixed(1)}%`;
+            appendMessage(data.response, "bot", metaInfo);
+            
+        } catch (error) {
+            typingIndicator.style.display = "none";
+            appendMessage("Error: Could not connect to the server.", "bot");
+        }
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === "Enter") sendMessage();
+    }
+</script>
+
+</body>
+</html>
