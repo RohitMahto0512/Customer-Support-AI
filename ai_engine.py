@@ -87,10 +87,22 @@ def get_ai_response(user_text):
         else:
             bot_input_ids = new_user_input_ids
 
-        # Generate a response based on the whole conversation
-        chat_history_ids = chat_model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
+        # Explicitly create an attention mask to satisfy Hugging Face
+        attention_mask = torch.ones(bot_input_ids.shape, dtype=torch.long)
+
+        # Generate a response with Anti-Looping safeguards (Sampling)
+        chat_history_ids = chat_model.generate(
+            bot_input_ids,
+            attention_mask=attention_mask,
+            max_length=1000,
+            pad_token_id=tokenizer.eos_token_id,
+            do_sample=True,     # Stops it from getting stuck in robotic loops
+            top_k=50,           # Restricts choices to the top 50 logical words
+            top_p=0.95,         # Nucleus sampling for natural phrasing
+            temperature=0.75    # Controls the "creativity" (0.0 is rigid, 1.0 is chaotic)
+        )
         
-        # Extract ONLY the bot's newly generated text (ignore the history)
+        # Extract ONLY the bot's newly generated text
         response = tokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
         
         # Failsafe if the LLM glitches out
